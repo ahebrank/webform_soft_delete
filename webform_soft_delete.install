@@ -1,0 +1,22 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the webform_soft_delete module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function webform_soft_delete_install() {
+  // Ensure the status field is installed.
+  $entity_definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $entity_type = \Drupal::entityTypeManager()->getDefinition('webform_submission');
+  $storage_definition = \Drupal::service('entity_field.manager')->getFieldStorageDefinitions('webform_submission')['status'];
+  $entity_definition_update_manager->installFieldStorageDefinition('status', 'webform_submission', 'webform_soft_delete', $storage_definition);
+
+  // Update all existing webform submissions to have status = 1.
+  \Drupal::database()->update('webform_submission')
+    ->fields(['status' => 1])
+    ->execute();
+}

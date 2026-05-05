@@ -1,0 +1,4 @@
+view soft deleted webform submissions:
+  title: 'View deleted webform submissions'
+  description: 'Allows users to view webform submissions that have been soft-deleted (status = 0).'
+  restrict access: true

@@ -1,0 +1,5 @@
+webform_soft_delete.deleted_submissions:
+  route_name: view.deleted_webform_submissions.page_1
+  title: 'Deleted Submissions'
+  base_route: entity.webform.collection
+  weight: 20

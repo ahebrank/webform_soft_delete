@@ -1,0 +1,94 @@
+<?php
+
+/**
+ * @file
+ * Contains webform_soft_delete.module.
+ */
+
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Access\AccessResult;
+use Drupal\views\ViewExecutable;
+use Drupal\views\Plugin\views\query\QueryPluginBase;
+use Drupal\Core\Database\Query\AlterableInterface;
+use Drupal\webform_soft_delete\WebformSubmissionStorage;
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function webform_soft_delete_entity_base_field_info(EntityTypeInterface $entity_type) {
+  if ($entity_type->id() === 'webform_submission') {
+    $fields = [];
+    $fields['status'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Status'))
+      ->setDescription(t('The status of the webform submission (1 for active, 0 for soft-deleted).'))
+      ->setDefaultValue(1)
+      ->setSetting('unsigned', TRUE);
+    return $fields;
+  }
+}
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function webform_soft_delete_entity_type_alter(array &$entity_types) {
+  if (isset($entity_types['webform_submission'])) {
+    $entity_types['webform_submission']->setStorageClass(WebformSubmissionStorage::class);
+  }
+}
+
+/**
+ * Implements hook_entity_access().
+ */
+function webform_soft_delete_entity_access(EntityInterface $entity, $operation, AccountInterface $account) {
+  if ($entity->getEntityTypeId() === 'webform_submission') {
+    // If the submission is soft-deleted, deny access unless the user has bypass permission.
+    if ($entity->hasField('status') && $entity->get('status')->value == 0) {
+      if (!$account->hasPermission('administer webform') &&
+          !$account->hasPermission('administer webform submission') &&
+          !$account->hasPermission('view soft deleted webform submissions')) {
+        return AccessResult::forbidden()->addCacheableDependency($entity);
+      }
+    }
+  }
+  return AccessResult::neutral();
+}
+
+/**
+ * Implements hook_query_TAG_alter() for webform_submission_access.
+ */
+function webform_soft_delete_query_webform_submission_access_alter(AlterableInterface $query) {
+  // If the query is tagged to bypass soft-delete filtering, skip.
+  if ($query->hasTag('bypass_webform_soft_delete') || $query->hasTag('views_deleted_webform_submissions')) {
+    return;
+  }
+
+  $tables = $query->getTables();
+  foreach ($tables as $alias => $table) {
+    if ($table['table'] === 'webform_submission') {
+      $query->condition($alias . '.status', 1);
+      break;
+    }
+  }
+}
+
+/**
+ * Implements hook_views_query_alter().
+ */
+function webform_soft_delete_views_query_alter(ViewExecutable $view, QueryPluginBase $query) {
+  // If the view is explicitly set to show deleted submissions, skip filtering.
+  if ($view->id() === 'deleted_webform_submissions' || !empty($view->display_handler->getOption('bypass_webform_soft_delete'))) {
+    return;
+  }
+
+  if ($query instanceof \Drupal\views\Plugin\views\query\Sql) {
+    foreach ($query->tables as $table_alias => $table_info) {
+      // Check for both the base table and any joins, ensuring the key exists.
+      if (isset($table_info['table']) && $table_info['table'] === 'webform_submission') {
+        $query->addWhere(0, $table_alias . '.status', 1);
+      }
+    }
+  }
+}

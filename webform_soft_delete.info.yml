@@ -1,0 +1,8 @@
+name: 'Webform Soft Delete'
+type: module
+description: 'Implements soft delete for webform submissions.'
+package: Custom
+core_version_requirement: ^9 || ^10 || ^11
+dependencies:
+  - webform:webform
+  - views_bulk_operations:views_bulk_operations
