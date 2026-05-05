@@ -15,8 +15,9 @@ function webform_soft_delete_install() {
   $storage_definition = \Drupal::service('entity_field.manager')->getFieldStorageDefinitions('webform_submission')['status'];
   $entity_definition_update_manager->installFieldStorageDefinition('status', 'webform_submission', 'webform_soft_delete', $storage_definition);
 
-  // Update all existing webform submissions to have status = 1.
+  // Update existing webform submissions to have status = 1 only if not already set.
   \Drupal::database()->update('webform_submission')
     ->fields(['status' => 1])
+    ->condition('status', NULL, 'IS NULL')
     ->execute();
 }
