@@ -18,6 +18,6 @@ function webform_soft_delete_install() {
   // Update existing webform submissions to have status = 1 only if not already set.
   \Drupal::database()->update('webform_submission')
     ->fields(['status' => 1])
-    ->isNull('status')
+    ->condition('status', NULL, 'IS NULL')
     ->execute();
 }
